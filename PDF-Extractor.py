@@ -5,6 +5,7 @@ from PIL import Image, ImageTk
 import pytesseract
 from tkinter import filedialog, messagebox
 from tkinter import Canvas, NW
+from docx import Document  # Import the python-docx library
 
 # Set dark appearance for a modern look
 ctk.set_appearance_mode("Dark")
@@ -110,6 +111,10 @@ class HomePage(ctk.CTkFrame):
         extract_btn = ctk.CTkButton(btn_frame, text="Extract Text", command=self.extract_text, width=200)
         extract_btn.pack(side="left", padx=(0, 10))
 
+        # Button for text extraction and export to Word
+        export_btn = ctk.CTkButton(btn_frame, text="Extract & Export to Word", command=self.extract_and_export_to_word, width=200)
+        export_btn.pack(side="left", padx=(0, 10))
+
     # ----------------- File Upload -----------------
     def upload_file(self):
         filetypes = [("PDF files", "*.pdf"), ("Image files", "*.jpg *.jpeg *.png")]
@@ -184,32 +189,57 @@ class HomePage(ctk.CTkFrame):
         if not self.original_img:
             messagebox.showerror("Image Error", "Original image not loaded properly.")
             return
-        if self.start_x is None or self.end_x is None:
-            messagebox.showwarning("No Selection", "Please select an extraction area on the preview.")
-            return
 
         try:
-            # Get the selected coordinates from the preview canvas
-            x1, y1 = min(self.start_x, self.end_x), min(self.start_y, self.end_y)
-            x2, y2 = max(self.start_x, self.end_x), max(self.start_y, self.end_y)
+            if self.start_x is not None and self.end_x is not None:
+                # Get the selected coordinates from the preview canvas
+                x1, y1 = min(self.start_x, self.end_x), min(self.start_y, self.end_y)
+                x2, y2 = max(self.start_x, self.end_x), max(self.start_y, self.end_y)
 
-            # Compute the scaling factors between the original image and the preview
-            scale_x = self.original_img.width / self.preview_img_width
-            scale_y = self.original_img.height / self.preview_img_height
+                # Compute the scaling factors between the original image and the preview
+                scale_x = self.original_img.width / self.preview_img_width
+                scale_y = self.original_img.height / self.preview_img_height
 
-            # Map the preview coordinates to the original image coordinates
-            orig_x1 = int(x1 * scale_x)
-            orig_y1 = int(y1 * scale_y)
-            orig_x2 = int(x2 * scale_x)
-            orig_y2 = int(y2 * scale_y)
+                # Map the preview coordinates to the original image coordinates
+                orig_x1 = int(x1 * scale_x)
+                orig_y1 = int(y1 * scale_y)
+                orig_x2 = int(x2 * scale_x)
+                orig_y2 = int(y2 * scale_y)
 
-            roi = self.original_img.crop((orig_x1, orig_y1, orig_x2, orig_y2))
-            self.extracted_text = pytesseract.image_to_string(roi, config='--oem 3 --psm 6')
+                roi = self.original_img.crop((orig_x1, orig_y1, orig_x2, orig_y2))
+                self.extracted_text = pytesseract.image_to_string(roi, config='--oem 3 --psm 6')
+            else:
+                ext = os.path.splitext(self.file_path)[1].lower()
+                if ext == ".pdf":
+                    doc = fitz.open(self.file_path)
+                    text = ""
+                    for page_num in range(len(doc)):
+                        page = doc.load_page(page_num)
+                        text += page.get_text()
+                    self.extracted_text = text
+                else:
+                    self.extracted_text = pytesseract.image_to_string(self.original_img, config='--oem 3 --psm 6')
+
             self.text_display.delete("1.0", "end")
             self.text_display.insert("end", self.extracted_text)
 
         except Exception as e:
             messagebox.showerror("Extraction Error", f"Error extracting text: {e}")
+
+    # ----------------- Extract and Export to Word -----------------
+    def extract_and_export_to_word(self):
+        self.extract_text()
+        if self.extracted_text:
+            try:
+                doc = Document()
+                doc.add_heading('Extracted Text', level=1)
+                doc.add_paragraph(self.extracted_text)
+                save_path = filedialog.asksaveasfilename(defaultextension=".docx", filetypes=[("Word files", "*.docx")])
+                if save_path:
+                    doc.save(save_path)
+                    messagebox.showinfo("Success", "Text successfully exported to Word file.")
+            except Exception as e:
+                messagebox.showerror("Export Error", f"Error exporting text to Word: {e}")
 
 # -----------------------------
 # Main Execution
