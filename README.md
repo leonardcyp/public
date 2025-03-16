@@ -52,6 +52,6 @@ Each project folder contains detailed instructions and necessary requirements. S
 
 I'd love to hear your thoughts or discuss potential collaborations!
 
-LinkedIn: [Your LinkedIn Profile Link]
+LinkedIn: https://www.linkedin.com/in/leonard-cheah-a8140b156/
 
 Happy coding!
